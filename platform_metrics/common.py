@@ -1,3 +1,5 @@
+import scanpy as sc
+
 
 def get_stats_dict(adata, sample_name, platform):
 
@@ -14,3 +16,16 @@ def get_stats_dict(adata, sample_name, platform):
             }
 
     print("returning", stats_dict)
+
+    return stats_dict
+
+def calculate_qc_metrics(adata):
+    """
+    Small method to add qc metrics to tenx data
+    Param: adata
+    Returns: The adata object with the added qc metrics
+    """
+    adata.var_names_make_unique(join="_dup_")
+    sc.pp.calculate_qc_metrics(adata, inplace=True)
+
+    return adata
