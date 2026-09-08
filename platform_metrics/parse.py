@@ -1,6 +1,6 @@
 import scanpy as sc
 import pandas as pd
-from platform_metrics.common import calculate_qc_metrics, get_stats_dict
+from platform_metrics.common import calculate_qc_metrics, get_stats_dict, get_cell_stats_df
 from loguru import logger
 
 
@@ -75,18 +75,42 @@ def platform_metrics_df_pa(project_sample_dic, data_dir):
 
     return metric_df
 
+def get_cell_metrics_df_pa(project_sample_dic, data_dir, processed=False):
+    """
+    Parameters
+    ----------
+    project_sample_dic: Project and sample structure for file
+    data_dir: Data directory
 
+    Returns
+    -------
+    DF of parameters found in the adata files
+    """
 
+    all_cell_stats = []
 
-# def calculate_10x_qc_metrics(adata):
-#     """
-#     Small method to add qc metrics to tenx data
-#     Param: adata
-#     Returns: The adata object with the added qc metrics
-#     """
-#     # Make the gene names unique - initially there were many probes with the same gene name.
-#     adata.var_names_make_unique(join="_dup_")
-#     # Run the metrics
-#     sc.pp.calculate_qc_metrics(adata, inplace=True)
-#
-#     return adata
+    for project, samples in project_sample_dic.items():
+        for sample in samples:
+
+            if processed:
+                adata = sc.read_h5ad(
+                    data_dir / f"{sample}_raw.h5ad"
+                )
+            else:
+                adata = load_pa_sample(data_dir, project, sample)
+                adata = calculate_qc_metrics(adata)
+
+            cell_stats = get_cell_stats_df(
+                adata,
+                sample_name=sample,
+                platform="Parse"
+            )
+
+            all_cell_stats.append(cell_stats)
+
+    cell_stats_df = pd.concat(all_cell_stats, ignore_index=True)
+
+    logger.info(f"Returning cell stats dataframe with {len(cell_stats_df)} cells")
+
+    return cell_stats_df
+

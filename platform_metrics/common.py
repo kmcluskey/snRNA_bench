@@ -1,4 +1,5 @@
 import scanpy as sc
+import pandas as pd
 
 
 def get_stats_dict(adata, sample_name, platform):
@@ -19,6 +20,21 @@ def get_stats_dict(adata, sample_name, platform):
 
     return stats_dict
 
+def get_cell_stats_df(adata, sample_name, platform):
+    """
+    Return per-cell QC metrics for cell-level analysis.
+    """
+
+    cell_stats = adata.obs[
+        ["n_genes_by_counts", "total_counts"]
+    ].copy()
+
+    cell_stats["sample"] = sample_name
+    cell_stats["platform"] = platform
+
+
+    return cell_stats
+
 def calculate_qc_metrics(adata):
     """
     Small method to add qc metrics to tenx data
@@ -29,3 +45,4 @@ def calculate_qc_metrics(adata):
     sc.pp.calculate_qc_metrics(adata, inplace=True)
 
     return adata
+
