@@ -47,13 +47,13 @@ class QCTracker:
             params = None
             values = None
 
-        total_umis = (
+        total_counts = (
             int(adata.obs["total_counts"].sum())
             if "total_counts" in adata.obs
             else None
         )
 
-        median_umis = (
+        median_counts = (
             adata.obs["total_counts"].median().round(2)
             if "total_counts" in adata.obs
             else None
@@ -79,9 +79,8 @@ class QCTracker:
         )
 
         if "predicted_doublet" in adata.obs:
-            print("here")
             rate = adata.obs["predicted_doublet"].mean() * 100
-            print ("yo", rate)
+            print ("mean doublet rate", rate)
             if not np.isnan(rate):
                 doublet_rate = round(rate, 2)
             else:
@@ -116,8 +115,8 @@ class QCTracker:
             "step": step_name,
             "n_cells": n_cells,
             "n_genes": n_genes,
-            "total_umis": total_umis,
-            "median_umis": median_umis,
+            "total_counts": total_counts,
+            "median_counts": median_counts,
             "median_genes_cell": median_genes_per_cell,
             "params": params,
             "values": values,
