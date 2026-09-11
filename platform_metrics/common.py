@@ -26,9 +26,8 @@ def get_cell_stats_df(adata, sample_name, platform):
     """
 
     cell_stats = adata.obs[
-        ["n_genes_by_counts", "total_counts"]
+        ["n_genes_by_counts", "total_counts", "pct_counts_mt", "pct_counts_rp"]
     ].copy()
-
     cell_stats["sample"] = sample_name
     cell_stats["platform"] = platform
 
