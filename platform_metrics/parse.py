@@ -2,16 +2,76 @@ import scanpy as sc
 import pandas as pd
 from platform_metrics.common import calculate_qc_metrics, get_stats_dict, get_cell_stats_df
 from loguru import logger
+from pathlib import Path
 
+def load_pa_sample(data_dir, project, sample):
+    """
+    Parse-specific AnnData loading with automatic h5ad caching.
+    """
+
+    count_dir = Path(data_dir) / project / sample / "count"
+    matrix_file = count_dir / "count_matrix.mtx.gz"
+    cache_file = count_dir / f"{sample}_raw.h5ad"
+
+    if cache_file.exists():
+        logger.info(f"Loading cached adata for {sample} from {cache_file}")
+        return sc.read_h5ad(cache_file)
+
+    logger.info(f"No cache found for {sample}; loading Parse matrix")
+
+    adata = sc.read_mtx(matrix_file)
+
+    gene_data = pd.read_csv(
+        count_dir / "all_genes.csv.gz"
+    )
+
+    cell_meta = pd.read_csv(
+        count_dir / "cell_metadata.csv.gz"
+    )
+
+    gene_data_use = gene_data.copy()
+    gene_data_use["gene_name"] = gene_data_use["gene_name"].astype(str)
+    gene_data_use = gene_data_use.set_index("gene_name")
+    gene_data_use.index = gene_data_use.index.astype(str)
+    gene_data_use.index.name = None
+
+    adata.var = gene_data_use
+
+    cell_meta_cp = cell_meta.copy()
+    cell_meta_cp["bc_wells"] = cell_meta_cp["bc_wells"].astype(str)
+    cell_meta_cp = cell_meta_cp.set_index("bc_wells")
+    cell_meta_cp.index = cell_meta_cp.index.astype(str)
+    cell_meta_cp.index.name = None
+
+    adata.obs = cell_meta_cp
+    adata.obs["sample_name"] = sample
+
+    logger.info(f"Writing cache for {sample}")
+    adata.write_h5ad(cache_file)
+
+    return adata
 
 # def load_pa_sample(data_dir, project, sample):
 #     """
 #     Parse specific adata loading
 #     """
 #
-#     adata = sc.read_mtx(
-#         data_dir / project / sample / "count" / "count_matrix.mtx.gz"
-#     )
+#     count_dir = Path(data_dir) / project / sample / "count"
+#     matrix_file = count_dir / "count_matrix.mtx.gz"
+#     cache_file = count_dir / f"{sample}_raw.h5ad"
+#
+#     if cache_file.exists():
+#         logger.info(f"Loading cached adata for {sample}")
+#
+#         return sc.read_h5ad(cache_file)
+#
+#     logger.info(f"No cache found for {sample}; loading Parse matrix")
+#
+#     adata = sc.read_mtx(matrix_file)
+#
+#     # adata = sc.read_mtx(
+#     #     data_dir / project / sample / "count" / "count_matrix.mtx.gz"
+#     # )
 #
 #     # reading in gene and cell data
 #     gene_data = pd.read_csv(
@@ -48,62 +108,62 @@ from loguru import logger
 #
 #     return adata
 
-from pathlib import Path
-import scanpy as sc
-
-def load_pa_sample(data_dir, project, sample, cache_dir=None):
-    """
-    Parse-specific AnnData loading, with optional h5ad cache.
-    """
-
-    if cache_dir is not None:
-        cache_dir = Path(cache_dir)
-        cache_dir.mkdir(parents=True, exist_ok=True)
-
-        cache_file = cache_dir / f"{sample}_raw.h5ad"
-
-        if cache_file.exists():
-            logger.info(f"Loading cached adata for {sample}")
-            return sc.read_h5ad(cache_file)
-
-    adata = sc.read_mtx(
-        data_dir / project / sample / "count" / "count_matrix.mtx.gz"
-    )
-
-    gene_data = pd.read_csv(
-        data_dir / project / sample / "count" / "all_genes.csv.gz"
-    )
-
-    cell_meta = pd.read_csv(
-        data_dir / project / sample / "count" / "cell_metadata.csv.gz"
-    )
-
-    # Add gene metadata
-    gene_data_use = gene_data.copy()
-    gene_data_use["gene_name"] = gene_data_use["gene_name"].astype(str)
-    gene_data_use = gene_data_use.set_index("gene_name")
-    gene_data_use.index = gene_data_use.index.astype(str)
-    gene_data_use.index.name = None
-
-    adata.var = gene_data_use
-
-    # Add cell metadata
-    cell_meta_cp = cell_meta.copy()
-    cell_meta_cp["bc_wells"] = cell_meta_cp["bc_wells"].astype(str)
-    cell_meta_cp = cell_meta_cp.set_index("bc_wells")
-    cell_meta_cp.index = cell_meta_cp.index.astype(str)
-    cell_meta_cp.index.name = None
-
-    adata.obs = cell_meta_cp
-    adata.obs["sample_name"] = sample
-
-    if cache_dir is not None:
-        logger.info(f"Writing cache for {sample}")
-        adata.write_h5ad(cache_file)
-
-    logger.info(f"Returning adata for {sample}")
-
-    return adata
+# from pathlib import Path
+# import scanpy as sc
+#
+# def load_pa_sample(data_dir, project, sample, cache_dir=None):
+#     """
+#     Parse-specific AnnData loading, with optional h5ad cache.
+#     """
+#
+#     if cache_dir is not None:
+#         cache_dir = Path(cache_dir)
+#         cache_dir.mkdir(parents=True, exist_ok=True)
+#
+#         cache_file = cache_dir / f"{sample}_raw.h5ad"
+#
+#         if cache_file.exists():
+#             logger.info(f"Loading cached adata for {sample}")
+#             return sc.read_h5ad(cache_file)
+#
+#     adata = sc.read_mtx(
+#         data_dir / project / sample / "count" / "count_matrix.mtx.gz"
+#     )
+#
+#     gene_data = pd.read_csv(
+#         data_dir / project / sample / "count" / "all_genes.csv.gz"
+#     )
+#
+#     cell_meta = pd.read_csv(
+#         data_dir / project / sample / "count" / "cell_metadata.csv.gz"
+#     )
+#
+#     # Add gene metadata
+#     gene_data_use = gene_data.copy()
+#     gene_data_use["gene_name"] = gene_data_use["gene_name"].astype(str)
+#     gene_data_use = gene_data_use.set_index("gene_name")
+#     gene_data_use.index = gene_data_use.index.astype(str)
+#     gene_data_use.index.name = None
+#
+#     adata.var = gene_data_use
+#
+#     # Add cell metadata
+#     cell_meta_cp = cell_meta.copy()
+#     cell_meta_cp["bc_wells"] = cell_meta_cp["bc_wells"].astype(str)
+#     cell_meta_cp = cell_meta_cp.set_index("bc_wells")
+#     cell_meta_cp.index = cell_meta_cp.index.astype(str)
+#     cell_meta_cp.index.name = None
+#
+#     adata.obs = cell_meta_cp
+#     adata.obs["sample_name"] = sample
+#
+#     if cache_dir is not None:
+#         logger.info(f"Writing cache for {sample}")
+#         adata.write_h5ad(cache_file)
+#
+#     logger.info(f"Returning adata for {sample}")
+#
+#     return adata
 
 def platform_metrics_df_pa(project_sample_dic, data_dir):
     """
