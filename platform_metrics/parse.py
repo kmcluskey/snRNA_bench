@@ -210,7 +210,7 @@ def get_cell_metrics_df_pa(project_sample_dic, data_dir, processed=False):
 
             if processed:
                 adata = sc.read_h5ad(
-                    data_dir / f"{sample}_raw.h5ad"
+                    data_dir / f"{sample}_processed.h5ad"
                 )
             else:
                 adata = load_pa_sample(data_dir, project, sample)
