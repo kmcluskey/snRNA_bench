@@ -12,6 +12,28 @@ from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 A set of helper files that can be used throughout the various TubAtlas apps.
 """
 
+## Get the significant log fold changes
+def get_sig_lfcs(df, padj=0.05, lfc=1,
+                     padj_col="padj", lfc_col="log2FoldChange", column_to_keep=None):
+
+    """
+    Extract significantly differentially expressed genes (DEGs).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DESeq2 results with gene_id, symbol, log2FoldChange and padj.
+    padj, lfc : float
+        Significance thresholds (default 0.05 and 1).
+    """
+    result = df[
+        (df[padj_col] < padj) &
+        (df[lfc_col].abs() > lfc)
+        ].copy()
+
+    deg_sig_df = result[['gene_id', 'symbol', lfc_col, padj_col, column_to_keep]]
+
+    return deg_sig_df
 
 def get_dros_genes_df():
 
@@ -173,26 +195,18 @@ def write_csv(df, filename, tissue, RESULTS_FOLDER):
     # except Exception as e:
     #     logger.warning("Writing failed because of %s " % e)
 
-def write_csv_to_dir(df, write_dir, filename):
-    """
-    :param df: DF to save as CSV
-    :param write_dir: The full write directory
-    :param filename: String The fileName of the CSV_file
-    :return:
-    """
-    logger.info(f'Attempting to Write out {filename} to {write_dir}')
-    try:
-        if os.path.exists(write_dir):
-            df.to_csv(os.path.join(write_dir, filename))
-            logger.info("Wrote out %s" % os.path.join(write_dir, filename))
-        else:
-            os.makedirs(write_dir)
-            df.to_csv(os.path.join(write_dir, filename))
-            logger.info("Wrote out %s" % os.path.join(write_dir, filename))
+def write_csv_to_dir(df, write_dir, filename, index=False):
+    """Save a DataFrame as CSV, creating the directory if necessary."""
 
-    except Exception as e:
-        logger.warning("Writing failed because of %s " % e)
-        raise e
+    write_dir = Path(write_dir)
+    write_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = write_dir / filename
+    df.to_csv(output_path, index=index)
+
+    logger.info("Saved CSV to {}", output_path)
+
+    return output_path
 
 def write_json_to_dir(dct, write_dir, filename):
     """
@@ -258,72 +272,6 @@ def get_fbgn_from_name(identifiers):
     return fbgn_list
 
 
-
-def get_kendall_score(list1, list2):
-    """
-    1 indicates a perfect agreement in rankings (direct correlation).
-    -1 indicates a perfect disagreement in rankings (inverse correlation).
-    0 indicates no association between rankings.
-    :param list1: List, to be compared
-    :param list2: List, to be compared
-    """
-    # # Create a mapping from strings to numerical values
-    mapping = {value: rank for rank, value in enumerate(sorted(set(list1 + list2)))}
-    # Convert the lists to numerical ranks
-    ranked_list1 = [mapping[item] for item in list1]
-    ranked_list2 = [mapping[item] for item in list2]
-
-    # Calculate Kendall Tau
-    tau, _ = kendalltau(ranked_list1, ranked_list2)
-
-    return tau
-
-def check_same_order(l1, l2):
-    """
-    Check if common elements in two lists appear in the same order and return True or False accordingly
-    :param l1: List
-    :param l2: List
-    :return: same_order: Boolean
-    """
-
-    # Find common elements in both lists while maintaining order
-    common_elements_a = [x for x in l1 if x in l2]
-    common_elements_b = [x for x in l2 if x in l1]
-
-    same_order = common_elements_a == common_elements_b
-
-    return same_order # All elements are in the same order across lists
-
-def normalise_vector(lfc_column, scaler_type):
-    """
-    Method to take a colum from a df and return a normalised vector
-    :param scaler_type: String, Type of normalisation to perform, standard, robust, minmax
-    :param lfc_column: DF column with values to be normalised
-    :return: normalised_vector, np.array, normalised values
-    """
-    vector_array = np.array(lfc_column)
-
-    # Reshape the vector to a make sure itsa single column
-    vector = vector_array.reshape(-1, 1)
-
-    # Create MinMaxScaler instance
-    if scaler_type == "standard":
-        scaler = StandardScaler()
-    elif scaler_type == "robust":
-        scaler = RobustScaler()
-    elif scaler_type == "minmax":
-
-        # Define the scaler
-        scaler = MinMaxScaler(feature_range=(-10, 10))
-
-    else:
-        logger.warning("please pass standard, robust or minmax for scaler type")
-        raise
-
-    # Fit and transform the vector using MinMaxScaler
-    normalized_vector = scaler.fit_transform(vector)
-
-    return normalized_vector
 
 def remove_duplicates_in_order(original_list):
     """
